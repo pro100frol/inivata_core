@@ -1,0 +1,53 @@
+---
+- hosts: tag_environment_dev:!tag_hostname_storage_gw01_dev_ini_com
+  gather_facts: no
+  become: yes
+  tasks:
+
+  - name: set hostname
+    hostname: name={{ ec2_tag_hostname }}
+
+  - name: Switching sftp on
+    lineinfile: >
+      dest=/etc/ssh/sshd_config
+      regexp=^Subsystem
+      line="Subsystem sftp  /usr/libexec/openssh/sftp-server"
+      state=present
+    register: sftpon
+  - name: restart sshd
+    service: name=sshd state=restarted
+    when: sftpon.changed
+
+  - name: Disable cloud hostname
+    lineinfile: >
+      dest=/etc/cloud/cloud.cfg
+      line='preserve_hostname: true'
+      state=present
+
+  - name: Generate /etc/hosts file
+    template:
+      src=etc/hosts.j2
+      dest=/etc/hosts
+      owner=root group=root mode=0644
+
+  - name: add suffix to resolvconf
+    lineinfile: >
+      dest=/etc/resolv.conf
+      regexp="^search"
+      line="search ini.com"
+      state=present
+
+  - name: Change kernel hostname
+    lineinfile: >
+      dest=/etc/sysctl.conf
+      regexp="kernel.hostname"
+      line="kernel.hostname={{ ec2_tag_hostname }}"
+      state=present
+  
+  - name: Set the prompt variable on bashrc
+    lineinfile: >
+      dest="/etc/bashrc"
+      regexp=^PS1=
+      line='PS1="[\u@`hostname | cut -d . -f1-2` \W]\$ "'
+      state=present
+

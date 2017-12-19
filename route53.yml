@@ -1,0 +1,17 @@
+---
+- hosts: tag_environment_dev
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: create record
+      route53:
+        private_zone: True
+        state: present
+        zone: ini.com.
+        record: "{{ ec2_tag_hostname }}"
+        type: A
+        value: "{{ec2_private_ip_address }}"
+        ttl: 600
+        overwrite: yes
+#    - debug:
+#        msg: "ip is {{ec2_private_ip_address }} and hostname is {{ ec2_tag_hostname.split('.')[:-2] | join ('.') }}"
